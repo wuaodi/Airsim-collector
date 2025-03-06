@@ -1,0 +1,15 @@
+/-p
+/build
+/Debug_x64_opencv.props
+/fly.py
+/fly_wad_circle - 副本.py
+/fly_wad_circle.py
+/get_gt _rid_lidar.cpp
+/get_imgs&lidar.cpp
+/HelloDrone.vcxproj
+/HelloDrone.vcxproj.filters
+/HelloDrone.vcxproj.user
+/main.cpp
+/opencv_test.cpp
+/temp
+/test.png
