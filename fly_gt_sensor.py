@@ -18,20 +18,14 @@ class AirSimDataCollector:
         
         # 创建基于时间戳的数据存储目录
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        self.base_path = Path(f"D:/dataset/{timestamp}/mav0")
+        self.base_path = Path(f"D:/dataset/{timestamp}")
         
         # 创建存储不同类型数据的目录
         self.folders = {
-            "gt": self.base_path / "state_groundtruth_estimate0",
+            "gt": self.base_path / "groundtruth/data",
             "lidar": self.base_path / "lidar0/data",
-            "cam0": self.base_path / "cam0_Scene/data",
-            "cam1": self.base_path / "cam1_Scene/data",
-            "cam2": self.base_path / "cam2_Scene/data",
-            "cam3": self.base_path / "cam3_Scene/data",
-            "depth0": self.base_path / "cam0_Depth/data",
-            "depth1": self.base_path / "cam1_Depth/data",
-            "seg0": self.base_path / "cam2_Segmentation/data",
-            "seg1": self.base_path / "cam3_Segmentation/data"
+            "cam0_scene": self.base_path / "cam0_Scene/data",
+            "cam0_seg": self.base_path / "cam0_Seg/data"
         }
         
         # 创建目录
@@ -50,20 +44,13 @@ class AirSimDataCollector:
                 self.csv_files[name].write("#timestamp, p_RS_R_x [m], p_RS_R_y [m], p_RS_R_z [m], q_RS_w [], q_RS_x [], q_RS_y [], q_RS_z []\n")
             elif name == "lidar":
                 self.csv_files[name].write("#timestamp,x,y,z,qw,qx,qy,qz\n")
-            elif name.startswith(("cam", "depth", "seg")):
+            elif name == "cam0_scene" or name == "cam0_seg":
                 self.csv_files[name].write("#timestamp[ns],filename\n")
         
         # 定义相机请求
-        self.camera_ids = ["0", "1", "2", "3"]
         self.image_requests = [
             airsim.ImageRequest("cam0", airsim.ImageType.Scene, False, False),
-            airsim.ImageRequest("cam1", airsim.ImageType.Scene, False, False),
-            airsim.ImageRequest("cam2", airsim.ImageType.Scene, False, False),
-            airsim.ImageRequest("cam3", airsim.ImageType.Scene, False, False),
-            airsim.ImageRequest("cam0", airsim.ImageType.DepthPerspective, True),
-            airsim.ImageRequest("cam1", airsim.ImageType.DepthPerspective, True),
-            airsim.ImageRequest("cam2", airsim.ImageType.Segmentation, False, False),
-            airsim.ImageRequest("cam3", airsim.ImageType.Segmentation, False, False)
+            airsim.ImageRequest("cam0", airsim.ImageType.Segmentation, False, False)
         ]
     
     def collect_data(self, timestamp):
@@ -94,6 +81,7 @@ class AirSimDataCollector:
                     f.write(f"{x},{y},{z}\n")
             
             # 记录激光雷达位姿
+            # 是相对于世界原点的，已包含无人机运动和安装偏移
             pose = lidar_data.pose
             self.csv_files["lidar"].write(f"{timestamp},"
                                        f"{pose.position.x_val},"
@@ -115,7 +103,7 @@ class AirSimDataCollector:
                 filename = f"{timestamp}.png"
                 
                 if img_type == airsim.ImageType.Scene:
-                    folder_key = f"cam{cam_id}"
+                    folder_key = "cam0_scene"
                     img_path = self.folders[folder_key] / filename
                     # 保存RGB图像
                     img1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
@@ -123,20 +111,8 @@ class AirSimDataCollector:
                     cv2.imwrite(str(img_path), img_rgb)
                     self.csv_files[folder_key].write(f"{timestamp},{filename}\n")
                 
-                elif img_type == airsim.ImageType.DepthPerspective:
-                    folder_key = f"depth{cam_id}"
-                    depth_filename = f"{timestamp}.pfm"
-                    img_path = self.folders[folder_key] / depth_filename
-                    # 保存深度图像为PFM格式
-                    airsim.write_pfm(str(img_path), airsim.get_pfm_array(response))
-                    self.csv_files[folder_key].write(f"{timestamp},{depth_filename}\n")
-                
                 elif img_type == airsim.ImageType.Segmentation:
-                    if cam_id in ["0", "1"]:
-                        folder_key = f"seg{cam_id}"
-                    else:
-                        print(f"Warning: Skipping unknown camera id {cam_id} for segmentation images.")
-                        continue
+                    folder_key = "cam0_seg"
                     img_path = self.folders[folder_key] / filename
                     # 保存分割图像
                     img1d = np.frombuffer(response.image_data_uint8, dtype=np.uint8)
@@ -198,8 +174,7 @@ if __name__ == "__main__":
         collector.fly_circle_z(start_z=-10, end_z=-1, num_steps=1000, sleep_time=0.1)
     except KeyboardInterrupt:
         print("\n用户中断了程序。")
-    except Exception as e:
-        print(f"发生错误: {e}")
+    except Exception as e:        print(f"发生错误: {e}")
     finally:
         if 'collector' in locals():
             collector.cleanup()
