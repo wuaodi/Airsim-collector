@@ -74,9 +74,10 @@ class AirSimDataCollector:
             # 保存激光雷达点云到文件
             lidar_filename = f"{timestamp}.asc"
             lidar_path = self.folders["lidar"] / lidar_filename
-            
+
             with open(lidar_path, 'w') as f:
-                for i in range(0, len(points), 3):
+                # 确保我们只处理完整的点云数据（每3个值为一组）
+                for i in range(0, len(points) - 2, 3):
                     x, y, z = points[i], points[i+1], points[i+2]
                     f.write(f"{x},{y},{z}\n")
             
@@ -97,6 +98,11 @@ class AirSimDataCollector:
         if responses:
             for i, response in enumerate(responses):
                 img_type = response.image_type
+                img_type = response.image_type
+                cam_name = response.camera_name
+                cam_id = cam_name[-1]
+                
+                img_type = response.image_type                
                 cam_name = response.camera_name
                 cam_id = cam_name[-1]
                 
@@ -174,7 +180,8 @@ if __name__ == "__main__":
         collector.fly_circle_z(start_z=-10, end_z=-1, num_steps=1000, sleep_time=0.1)
     except KeyboardInterrupt:
         print("\n用户中断了程序。")
-    except Exception as e:        print(f"发生错误: {e}")
+    except Exception as e:        
+        print(f"发生错误: {e}")
     finally:
         if 'collector' in locals():
             collector.cleanup()
