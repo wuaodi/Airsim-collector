@@ -28,10 +28,10 @@
           "Roll": 0,
           "Pitch": -90.0,
           "Yaw": 0,
-          "VerticalFOVUpper": 27,
-          "VerticalFOVLower": -25,
-          "HorizontalFOVStart": -60,
-          "HorizontalFOVEnd": 60,
+          "VerticalFOVUpper": 20,
+          "VerticalFOVLower": -20,
+          "HorizontalFOVStart": -20,
+          "HorizontalFOVEnd": 20,
           "DrawDebugPoints": false,
           "DataFrame": "SensorLocalFrame"
         }
@@ -43,14 +43,14 @@
               "ImageType": 0,
               "Width": 2048,
               "Height": 2048,
-              "FOV_Degrees": 58,
+              "FOV_Degrees": 60,
               "TargetGamma": 1.0
             },
             {
               "ImageType": 5,
               "Width": 2048,
               "Height": 2048,
-              "FOV_Degrees": 58,
+              "FOV_Degrees": 60,
               "TargetGamma": 1.0
             }
           ],
