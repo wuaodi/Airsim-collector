@@ -126,20 +126,22 @@ class AirSimDataCollector:
                     cv2.imwrite(str(img_path), img_seg)
                     self.csv_files[folder_key].write(f"{timestamp},{filename}\n")
     
-    def fly_circle_z(self, start_z=-10, end_z=-1, num_steps=1000, sleep_time=0.1):
-        """让无人机在z轴上从start_z飞行到end_z"""
+    def fly_control(self, num_steps=1000, sleep_time=0.1):
+        """控制无人机按照设定路径飞行"""
         print("开始无人机飞行和数据采集")
         
         # 起飞
         self.client.takeoffAsync().join()
-        
-        # 固定的X和Y坐标
-        x, y = 0, 0
+
+        # 固定的X和Z坐标
+        y, z = 0, -10
+        start_x=5
+        end_x=1
         
         # 逐步从start_z移动到end_z
         for i in range(num_steps + 1):
             # 计算当前Z坐标
-            z = start_z + (end_z - start_z) * (i / num_steps)
+            x = start_x + (end_x - start_x) * (i / num_steps)
             
             # 设置无人机位姿
             pose = airsim.Pose(airsim.Vector3r(x, y, z), airsim.to_quaternion(pitch=0, roll=0, yaw=0))
@@ -176,8 +178,8 @@ class AirSimDataCollector:
 if __name__ == "__main__":
     try:
         collector = AirSimDataCollector()
-        # 从-10m飞到-1m，1000步，10Hz频率(sleep_time=0.1)
-        collector.fly_circle_z(start_z=-10, end_z=-1, num_steps=1000, sleep_time=0.1)
+        # 10步，10Hz频率(sleep_time=0.1)
+        collector.fly_control(num_steps=10, sleep_time=0.1)
     except KeyboardInterrupt:
         print("\n用户中断了程序。")
     except Exception as e:        
