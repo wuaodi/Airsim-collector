@@ -97,15 +97,7 @@ class AirSimDataCollector:
         responses = self.client.simGetImages(self.image_requests)
         if responses:
             for i, response in enumerate(responses):
-                img_type = response.image_type
-                img_type = response.image_type
-                cam_name = response.camera_name
-                cam_id = cam_name[-1]
-                
-                img_type = response.image_type                
-                cam_name = response.camera_name
-                cam_id = cam_name[-1]
-                
+                img_type = response.image_type          
                 filename = f"{timestamp}.png"
                 
                 if img_type == airsim.ImageType.Scene:
@@ -126,7 +118,7 @@ class AirSimDataCollector:
                     cv2.imwrite(str(img_path), img_seg)
                     self.csv_files[folder_key].write(f"{timestamp},{filename}\n")
     
-    def fly_control(self, num_steps=1000, sleep_time=0.1):
+    def fly_control(self, num_steps=1000):
         """控制无人机按照设定路径飞行"""
         print("开始无人机飞行和数据采集")
         
@@ -134,27 +126,27 @@ class AirSimDataCollector:
         self.client.takeoffAsync().join()
 
         # 固定的X和Z坐标
-        y, z = 0, -10
-        start_x=5
-        end_x=1
+        x, y = 0, 0
+        start_z=-10
+        end_z=-2
         
         # 逐步从start_z移动到end_z
         for i in range(num_steps + 1):
             # 计算当前Z坐标
-            x = start_x + (end_x - start_x) * (i / num_steps)
+            z = start_z + (end_z - start_z) * (i / num_steps)
             
             # 设置无人机位姿
             pose = airsim.Pose(airsim.Vector3r(x, y, z), airsim.to_quaternion(pitch=0, roll=0, yaw=0))
             self.client.simSetVehiclePose(pose, True)
+
+            # 暂停确保无人机位姿设置到位了
+            time.sleep(0.1)
             
             # 生成时间戳（以纳秒为单位）
             timestamp = str(int(time.time() * 1e9))
             
             # 在当前位置收集所有数据
             self.collect_data(timestamp)
-            
-            # 等待以保持频率
-            time.sleep(sleep_time)
         
         # 在终点位置悬停
         self.client.hoverAsync().join()
@@ -178,8 +170,7 @@ class AirSimDataCollector:
 if __name__ == "__main__":
     try:
         collector = AirSimDataCollector()
-        # 10步，10Hz频率(sleep_time=0.1)
-        collector.fly_control(num_steps=10, sleep_time=0.1)
+        collector.fly_control(num_steps=10)
     except KeyboardInterrupt:
         print("\n用户中断了程序。")
     except Exception as e:        
