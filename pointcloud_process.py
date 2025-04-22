@@ -3,42 +3,64 @@ import numpy as np
 import cv2
 from glob import glob
 from tqdm import tqdm
+import math
 
 def read_asc_pointcloud(filepath):
     """读取.asc格式的点云文件"""
     points = []
-    intensities = []
     
     with open(filepath, 'r') as f:
         for line in f:
-            values = line.strip().split()
-            if len(values) >= 4:  # x, y, z, intensity
-                x, y, z, intensity = map(float, values[:4])
-                points.append([x, y, z])
-                intensities.append(intensity)
+            # 关键修改1：使用逗号分割，并去除首尾空格/空值
+            values = [x.strip() for x in line.strip().split(',') if x.strip()]
+            # print('有效点：', values)
+            
+            if len(values) >= 3:  # x, y, z
+                try:
+                    x, y, z = map(float, values[:3])
+                    points.append([x, y, z])
+                    # print('输出点：', [x, y, z])
+                except ValueError as e:
+                    print(f"格式错误: {values} -> {e}")
     
     points = np.array(points, dtype=np.float32)
-    intensities = np.array(intensities, dtype=np.float32)
-    
-    return points, intensities
+    print(f"总读取点数: {len(points)}")
+    return points
+
+def transform_lidar_to_camera_frame(point):
+    """
+    将激光雷达坐标系下的点转换到相机坐标系
+    """
+    # 激光雷达相对于相机的平移向量
+    # translation = np.array([0, 0, -0.1])
+    translation = np.array([0, 0, 0])
+    # 应用平移
+    transformed_point = point + translation
+    return transformed_point
 
 def project_point_to_image(point, image_width, image_height):
     """
     将3D点投影到图像平面上
-    这里假设相机和雷达没有外参差异，使用简单的投影
-    实际应用中可能需要更复杂的相机模型和外参
+    注意：此函数接收的点应该已经在相机坐标系下，前右下为XYZ
     """
-    # 这是一个简化的针孔相机模型
-    # 假设视场角为90度，焦距为image_width/2
-    focal_length = image_width / 2
+    # 根据提供的配置参数:
+    # FOV_Degrees = 60
+    # 图像尺寸为 2048x2048
     
-    # 确保点在相机前方
+    # 计算焦距 (像素)
+    fov_rad = math.radians(40)
+    focal_length = (image_width / 2) / math.tan(fov_rad / 2)
+    
+    # 确保点在相机前方 (X轴正方向)
     if point[0] <= 0:
         return None
     
-    # 简单投影
-    u = int(focal_length * point[1] / point[0] + image_width / 2)
-    v = int(focal_length * point[2] / point[0] + image_height / 2)
+    cx = image_width / 2
+    cy = image_height / 2
+    
+    # 投影
+    u = int(focal_length * point[1] / point[0] + cx) # 右
+    v = int(focal_length * point[2] / point[0] + cy) # 下
     
     # 检查是否在图像范围内
     if 0 <= u < image_width and 0 <= v < image_height:
@@ -50,49 +72,48 @@ def get_label_from_segmentation(seg_image, u, v):
     # 读取像素值
     pixel_value = seg_image[v, u]
     
-    # 如果是彩色图像，需要转换为标签
-    # 这里需要根据Airsim的语义图像映射规则进行转换
-    # 例如，可以使用颜色映射表将RGB值映射到语义类别
+    # Airsim语义分割图像是单通道的，每个像素值对应一个类别
+    # 如果您的语义图像是RGB格式的，需要将RGB值映射到标签ID
     
-    # 简单示例: 假设语义图像中的像素值已经是标签ID
-    # 实际应用中可能需要更复杂的映射逻辑
-    if len(pixel_value.shape) > 0:  # RGB图像
-        # 使用简单的颜色到类别的映射
-        # 这里需要根据您的实际数据进行调整
+    if len(seg_image.shape) == 3:  # RGB图像
+        # 这里需要根据您的Airsim语义设置定义颜色到标签的映射
+        # 示例映射:
         color_to_label = {
-            (0, 0, 0): 0,      # 背景
-            (128, 64, 128): 1, # 道路
-            (244, 35, 232): 2, # 人行道
-            (70, 70, 70): 3,   # 建筑
-            # 添加更多映射...
+            (0, 0, 0): 0,        # 背景
+            (128, 64, 128): 1,   # 道路
+            (244, 35, 232): 2,   # 人行道
+            (70, 70, 70): 3,     # 建筑
+            (102, 102, 156): 4,  # 墙
+            (190, 153, 153): 5,  # 围栏
+            (153, 153, 153): 6,  # 杆
+            (250, 170, 30): 7,   # 交通灯
+            (220, 220, 0): 8,    # 交通标志
+            (107, 142, 35): 9,   # 植被
+            (152, 251, 152): 10, # 地形
+            (70, 130, 180): 11,  # 天空
+            (220, 20, 60): 12,   # 人
+            (255, 0, 0): 13,     # 骑车人
+            (0, 0, 142): 14,     # 汽车
+            (0, 0, 70): 15,      # 卡车
+            (0, 60, 100): 16,    # 公交车
+            (0, 80, 100): 17,    # 火车
+            (0, 0, 230): 18,     # 摩托车
+            (119, 11, 32): 19    # 自行车
         }
         
         # 找到最接近的颜色
         min_dist = float('inf')
         label = 0
+        pixel_tuple = tuple(pixel_value)
+        
         for color, lbl in color_to_label.items():
-            dist = sum((pixel_value[i] - color[i])**2 for i in range(3))
+            dist = sum((pixel_tuple[i] - color[i])**2 for i in range(3))
             if dist < min_dist:
                 min_dist = dist
                 label = lbl
         return label
-    else:  # 灰度图像
+    else:  # 单通道图像
         return int(pixel_value)
-
-def normalize_intensity(intensity_array):
-    """归一化强度值到0-1范围"""
-    min_val = np.min(intensity_array)
-    max_val = np.max(intensity_array)
-    
-    if max_val == min_val:
-        return np.zeros_like(intensity_array)
-    
-    normalized = (intensity_array - min_val) / (max_val - min_val)
-    # 确保值在0.0-0.99范围内
-    normalized = np.round(normalized, decimals=2)
-    normalized = np.minimum(normalized, 0.99)
-    
-    return normalized
 
 def convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, output_label_dir):
     """将Airsim点云数据转换为Semantic KITTI格式"""
@@ -117,7 +138,7 @@ def convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, ou
             continue
         
         # 读取点云
-        points, intensities = read_asc_pointcloud(pc_file)
+        points = read_asc_pointcloud(pc_file)
         
         # 读取语义分割图像
         seg_image = cv2.imread(seg_file)
@@ -128,22 +149,22 @@ def convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, ou
         
         # 将点投影到图像平面并获取标签
         for i, point in enumerate(points):
+            # 将激光雷达点转换到相机坐标系
+            camera_point = transform_lidar_to_camera_frame(point)
+            
             # 投影点到图像平面
-            projection = project_point_to_image(point, width, height)
+            projection = project_point_to_image(camera_point, width, height)
             if projection:
                 u, v = projection
                 # 获取标签
                 labels[i] = get_label_from_segmentation(seg_image, u, v)
         
-        # 归一化强度值
-        normalized_intensities = normalize_intensity(intensities)
-        
-        # 创建XYZI点云数据
-        xyzi = np.column_stack((points, normalized_intensities)).astype(np.float32)
+        # 创建XYZ点云数据
+        xyz = points.astype(np.float32)
         
         # 保存为bin文件
         output_bin_file = os.path.join(output_bin_dir, f"{file_id}.bin")
-        xyzi.tofile(output_bin_file)
+        xyz.tofile(output_bin_file)
         
         # 保存标签为label文件
         output_label_file = os.path.join(output_label_dir, f"{file_id}.label")
@@ -158,8 +179,11 @@ if __name__ == "__main__":
     seg_dir = "path/to/segmentation/images"  # 语义分割图像文件夹
     output_bin_dir = "path/to/output/bin"    # 输出的bin文件夹
     output_label_dir = "path/to/output/label"  # 输出的label文件夹
-    
+
+    # 验证投影正确
+
+
     # 执行转换
-    convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, output_label_dir)
+    # convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, output_label_dir)
     
     print("Conversion completed!")
