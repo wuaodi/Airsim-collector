@@ -66,8 +66,8 @@ def process_files_in_folder(img_path, lidar_path):
 # 使用示例 -----------------------------------------------------------------
 if __name__ == "__main__":
     # 输入文件夹路径（需要修改为实际路径）
-    img_path = "imgdir2"
-    lidar_path = "lidardir2"
+    img_path = "imgdir"
+    lidar_path = "lidardir"
 
     # 处理文件夹内的所有文件
     process_files_in_folder(img_path, lidar_path)
