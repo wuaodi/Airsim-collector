@@ -11,15 +11,14 @@ def read_asc_pointcloud(filepath):
     
     with open(filepath, 'r') as f:
         for line in f:
-            # 关键修改1：使用逗号分割，并去除首尾空格/空值
+            # 使用逗号分割，并去除首尾空格/空值
             values = [x.strip() for x in line.strip().split(',') if x.strip()]
-            # print('有效点：', values)
             
             if len(values) >= 3:  # x, y, z
                 try:
                     x, y, z = map(float, values[:3])
+                    z = z - 0.1
                     points.append([x, y, z])
-                    # print('输出点：', [x, y, z])
                 except ValueError as e:
                     print(f"格式错误: {values} -> {e}")
     
@@ -48,7 +47,7 @@ def project_point_to_image(point, image_width, image_height):
     # 图像尺寸为 2048x2048
     
     # 计算焦距 (像素)
-    fov_rad = math.radians(40)
+    fov_rad = math.radians(50)
     focal_length = (image_width / 2) / math.tan(fov_rad / 2)
     
     # 确保点在相机前方 (X轴正方向)

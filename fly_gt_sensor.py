@@ -140,7 +140,7 @@ class AirSimDataCollector:
             self.client.simSetVehiclePose(pose, True)
 
             # 暂停确保无人机位姿设置到位了
-            time.sleep(0.1)
+            time.sleep(1)
             
             # 生成时间戳（以纳秒为单位）
             timestamp = str(int(time.time() * 1e9))

@@ -21,17 +21,17 @@
           "Range": 300,
           "NumberOfChannels": 256,
           "RotationsPerSecond": 10,
-          "PointsPerSecond": 30000000,
+          "PointsPerSecond": 10000000,
           "X": 0.1,
           "Y": 0,
           "Z": 1,
           "Roll": 0,
           "Pitch": -90.0,
           "Yaw": 0,
-          "VerticalFOVUpper": 20,
-          "VerticalFOVLower": -20,
-          "HorizontalFOVStart": -20,
-          "HorizontalFOVEnd": 20,
+          "VerticalFOVUpper": 25,
+          "VerticalFOVLower": -25,
+          "HorizontalFOVStart": -25,
+          "HorizontalFOVEnd": 25,
           "DrawDebugPoints": false,
           "DataFrame": "SensorLocalFrame"
         }
@@ -43,21 +43,21 @@
               "ImageType": 0,
               "Width": 2048,
               "Height": 2048,
-              "FOV_Degrees": 60,
+              "FOV_Degrees": 50,
               "TargetGamma": 1.0
             },
             {
               "ImageType": 5,
               "Width": 2048,
               "Height": 2048,
-              "FOV_Degrees": 60,
+              "FOV_Degrees": 50,
               "TargetGamma": 1.0
             }
           ],
           "X": 0,
           "Y": 0,
           "Z": 1,
-          "Roll": 0.0,
+          "Roll": 0,
           "Pitch": -90.0,
           "Yaw": 0.0
         }
