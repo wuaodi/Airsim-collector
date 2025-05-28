@@ -17,7 +17,6 @@ def read_asc_pointcloud(filepath):
             if len(values) >= 3:  # x, y, z
                 try:
                     x, y, z = map(float, values[:3])
-                    z = z - 0.1
                     points.append([x, y, z])
                 except ValueError as e:
                     print(f"格式错误: {values} -> {e}")
@@ -31,8 +30,7 @@ def transform_lidar_to_camera_frame(point):
     将激光雷达坐标系下的点转换到相机坐标系
     """
     # 激光雷达相对于相机的平移向量
-    # translation = np.array([0, 0, -0.1])
-    translation = np.array([0, 0, 0])
+    translation = np.array([0, 0, -0.1])
     # 应用平移
     transformed_point = point + translation
     return transformed_point
@@ -78,26 +76,9 @@ def get_label_from_segmentation(seg_image, u, v):
         # 这里需要根据您的Airsim语义设置定义颜色到标签的映射
         # 示例映射:
         color_to_label = {
-            (0, 0, 0): 0,        # 背景
-            (128, 64, 128): 1,   # 道路
-            (244, 35, 232): 2,   # 人行道
-            (70, 70, 70): 3,     # 建筑
-            (102, 102, 156): 4,  # 墙
-            (190, 153, 153): 5,  # 围栏
-            (153, 153, 153): 6,  # 杆
-            (250, 170, 30): 7,   # 交通灯
-            (220, 220, 0): 8,    # 交通标志
-            (107, 142, 35): 9,   # 植被
-            (152, 251, 152): 10, # 地形
-            (70, 130, 180): 11,  # 天空
-            (220, 20, 60): 12,   # 人
-            (255, 0, 0): 13,     # 骑车人
-            (0, 0, 142): 14,     # 汽车
-            (0, 0, 70): 15,      # 卡车
-            (0, 60, 100): 16,    # 公交车
-            (0, 80, 100): 17,    # 火车
-            (0, 0, 230): 18,     # 摩托车
-            (119, 11, 32): 19    # 自行车
+            (11, 236, 9): 0,     # 主体
+            (146, 52, 70): 1,    # 左帆板
+            (29, 26, 199): 2     # 右帆板
         }
         
         # 找到最接近的颜色
@@ -114,7 +95,7 @@ def get_label_from_segmentation(seg_image, u, v):
     else:  # 单通道图像
         return int(pixel_value)
 
-def convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, output_label_dir):
+def convert_airsim_to_kitti(pointcloud_dir, seg_dir, output_bin_dir, output_label_dir):
     """将Airsim点云数据转换为Semantic KITTI格式"""
     
     # 创建输出目录
@@ -128,11 +109,10 @@ def convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, ou
         # 从文件名中提取ID
         file_id = os.path.splitext(os.path.basename(pc_file))[0]
         
-        # 查找对应的RGB和语义分割图像
-        rgb_file = os.path.join(rgb_dir, f"{file_id}.jpg")
-        seg_file = os.path.join(seg_dir, f"{file_id}.jpg")
+        # 查找对应的语义分割图像
+        seg_file = os.path.join(seg_dir, f"{file_id}.png")
         
-        if not (os.path.exists(rgb_file) and os.path.exists(seg_file)):
+        if not (os.path.exists(seg_file)):
             print(f"Warning: Could not find corresponding images for {file_id}")
             continue
         
@@ -144,7 +124,7 @@ def convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, ou
         height, width = seg_image.shape[:2]
         
         # 初始化标签数组
-        labels = np.zeros(len(points), dtype=np.int32)
+        labels = np.zeros(len(points), dtype=np.uint32)
         
         # 将点投影到图像平面并获取标签
         for i, point in enumerate(points):
@@ -158,8 +138,10 @@ def convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, ou
                 # 获取标签
                 labels[i] = get_label_from_segmentation(seg_image, u, v)
         
-        # 创建XYZ点云数据
-        xyz = points.astype(np.float32)
+        # 创建XYZ点云数据，增加强度值（用0填充）
+        xyz = np.zeros((len(points), 4), dtype=np.float32)
+        xyz[:, :3] = points  # 复制XYZ坐标
+        xyz[:, 3] = 0.0      # 强度值设为0
         
         # 保存为bin文件
         output_bin_file = os.path.join(output_bin_dir, f"{file_id}.bin")
@@ -173,16 +155,12 @@ def convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, ou
 
 if __name__ == "__main__":
     # 配置路径
-    pointcloud_dir = "path/to/asc/files"  # .asc点云文件夹
-    rgb_dir = "path/to/rgb/images"        # RGB图像文件夹
-    seg_dir = "path/to/segmentation/images"  # 语义分割图像文件夹
-    output_bin_dir = "path/to/output/bin"    # 输出的bin文件夹
-    output_label_dir = "path/to/output/label"  # 输出的label文件夹
-
-    # 验证投影正确
-
+    pointcloud_dir = "D:\project\Airsim-collector\\airsim_data\lidar0\data"  # .asc点云文件夹
+    seg_dir = "D:\project\Airsim-collector\\airsim_data\cam0_Seg\data"  # 语义分割图像文件夹
+    output_bin_dir = "airsim_data_convert/00/velodyne"    # 输出的bin文件夹，仿照semantic_example结构
+    output_label_dir = "airsim_data_convert/00/labels"  # 输出的label文件夹，仿照semantic_example结构
 
     # 执行转换
-    # convert_airsim_to_kitti(pointcloud_dir, rgb_dir, seg_dir, output_bin_dir, output_label_dir)
+    convert_airsim_to_kitti(pointcloud_dir, seg_dir, output_bin_dir, output_label_dir)
     
     print("Conversion completed!")
