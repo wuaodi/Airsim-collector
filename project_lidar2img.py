@@ -2,7 +2,7 @@ import os
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from pointcloud_process import *
+from airsim2semantickitti import *
 
 def visualize_projection(points_cloud, image_path):
     """可视化点云在图像上的投影"""
@@ -66,8 +66,8 @@ def process_files_in_folder(img_path, lidar_path):
 # 使用示例 -----------------------------------------------------------------
 if __name__ == "__main__":
     # 输入文件夹路径（需要修改为实际路径）
-    img_path = "imgdir"
-    lidar_path = "lidardir"
+    img_path = "airsim_data/cam0_Seg/data"
+    lidar_path = "airsim_data/lidar0/data"
 
     # 处理文件夹内的所有文件
     process_files_in_folder(img_path, lidar_path)

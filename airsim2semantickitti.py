@@ -4,6 +4,7 @@ import cv2
 from glob import glob
 from tqdm import tqdm
 import math
+import shutil
 
 def read_asc_pointcloud(filepath):
     """读取.asc格式的点云文件"""
@@ -30,7 +31,7 @@ def transform_lidar_to_camera_frame(point):
     将激光雷达坐标系下的点转换到相机坐标系
     """
     # 激光雷达相对于相机的平移向量
-    translation = np.array([0, 0, -0.1])
+    translation = np.array([0, 0, 0])
     # 应用平移
     transformed_point = point + translation
     return transformed_point
@@ -47,6 +48,7 @@ def project_point_to_image(point, image_width, image_height):
     # 计算焦距 (像素)
     fov_rad = math.radians(50)
     focal_length = (image_width / 2) / math.tan(fov_rad / 2)
+    # print('focal_length:',focal_length)
     
     # 确保点在相机前方 (X轴正方向)
     if point[0] <= 0:
@@ -95,13 +97,13 @@ def get_label_from_segmentation(seg_image, u, v):
     else:  # 单通道图像
         return int(pixel_value)
 
-def convert_airsim_to_kitti(pointcloud_dir, seg_dir, output_bin_dir, output_label_dir):
+def convert_airsim_to_kitti(pointcloud_dir, seg_dir, img_dir, output_bin_dir, output_label_dir, output_img_dir):
     """将Airsim点云数据转换为Semantic KITTI格式"""
     
     # 创建输出目录
     os.makedirs(output_bin_dir, exist_ok=True)
     os.makedirs(output_label_dir, exist_ok=True)
-    
+    os.makedirs(output_img_dir, exist_ok=True)
     # 获取所有点云文件
     pointcloud_files = sorted(glob(os.path.join(pointcloud_dir, "*.asc")))
     
@@ -111,6 +113,10 @@ def convert_airsim_to_kitti(pointcloud_dir, seg_dir, output_bin_dir, output_labe
         
         # 查找对应的语义分割图像
         seg_file = os.path.join(seg_dir, f"{file_id}.png")
+
+        # 查找对应的图像，并将其复制到output_img_dir
+        img_file = os.path.join(img_dir, f"{file_id}.png")
+        shutil.copy(img_file, os.path.join(output_img_dir, f"{file_id}.png"))
         
         if not (os.path.exists(seg_file)):
             print(f"Warning: Could not find corresponding images for {file_id}")
@@ -155,12 +161,14 @@ def convert_airsim_to_kitti(pointcloud_dir, seg_dir, output_bin_dir, output_labe
 
 if __name__ == "__main__":
     # 配置路径
-    pointcloud_dir = "D:\project\Airsim-collector\\airsim_data\lidar0\data"  # .asc点云文件夹
-    seg_dir = "D:\project\Airsim-collector\\airsim_data\cam0_Seg\data"  # 语义分割图像文件夹
-    output_bin_dir = "airsim_data_convert/00/velodyne"    # 输出的bin文件夹，仿照semantic_example结构
-    output_label_dir = "airsim_data_convert/00/labels"  # 输出的label文件夹，仿照semantic_example结构
+    pointcloud_dir = "airsim_data/lidar0/data"  # .asc点云文件夹
+    seg_dir = "airsim_data/cam0_Seg/data"  # 语义分割图像文件夹
+    img_dir = "airsim_data/cam0_Scene/data"  # 图像文件夹
+    output_bin_dir = "airsim_data_convert/sequences/00/velodyne"    # 输出的bin文件夹，仿照semantic_example结构
+    output_label_dir = "airsim_data_convert/sequences/00/labels"  # 输出的label文件夹，仿照semantic_example结构
+    output_img_dir = "airsim_data_convert/sequences/00/image_2"  # 输出的img文件夹，仿照semantic_example结构
 
     # 执行转换
-    convert_airsim_to_kitti(pointcloud_dir, seg_dir, output_bin_dir, output_label_dir)
+    convert_airsim_to_kitti(pointcloud_dir, seg_dir, img_dir, output_bin_dir, output_label_dir, output_img_dir)
     
     print("Conversion completed!")

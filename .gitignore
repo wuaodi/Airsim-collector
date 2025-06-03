@@ -13,5 +13,5 @@
 /opencv_test.cpp
 /temp
 /test.png
-/imgdir
-/lidardir
+/airsim_data_convert
+/airsim_data
