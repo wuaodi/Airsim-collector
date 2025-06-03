@@ -47,6 +47,7 @@ def project_point_to_image(point, image_width, image_height):
     # 计算焦距 (像素)
     fov_rad = math.radians(50)
     focal_length = (image_width / 2) / math.tan(fov_rad / 2)
+    print('focal_length', focal_length)
     
     # 确保点在相机前方 (X轴正方向)
     if point[0] <= 0:
@@ -155,10 +156,10 @@ def convert_airsim_to_kitti(pointcloud_dir, seg_dir, output_bin_dir, output_labe
 
 if __name__ == "__main__":
     # 配置路径
-    pointcloud_dir = "D:\project\Airsim-collector\\airsim_data\lidar0\data"  # .asc点云文件夹
-    seg_dir = "D:\project\Airsim-collector\\airsim_data\cam0_Seg\data"  # 语义分割图像文件夹
-    output_bin_dir = "airsim_data_convert/00/velodyne"    # 输出的bin文件夹，仿照semantic_example结构
-    output_label_dir = "airsim_data_convert/00/labels"  # 输出的label文件夹，仿照semantic_example结构
+    pointcloud_dir = "./airsim_data/lidar0/data"  # .asc点云文件夹
+    seg_dir = "./airsim_data/cam0_Seg/data"  # 语义分割图像文件夹
+    output_bin_dir = "./airsim_data_convert/00/velodyne"    # 输出的bin文件夹，仿照semantic_example结构
+    output_label_dir = "./airsim_data_convert/00/labels"  # 输出的label文件夹，仿照semantic_example结构
 
     # 执行转换
     convert_airsim_to_kitti(pointcloud_dir, seg_dir, output_bin_dir, output_label_dir)
